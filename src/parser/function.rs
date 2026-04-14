@@ -1,7 +1,7 @@
-use crate::ContextType;
 use crate::ast::{
-    CallArgument, FunctionCaptures, FunctionDefinition, FunctionEnvironment, FunctionParam,
-    FunctionParams, FunctionRefParam, Precedence, SeparatedList1,
+    CallArgument, Expression, FunctionCaptures, FunctionDefinition, FunctionEnvironment,
+    FunctionExpression, FunctionParam, FunctionParams, FunctionRefParam, PlainType, Precedence,
+    SeparatedList1, Type,
 };
 use crate::parser::ParseResult;
 use crate::parser::expression::expression;
@@ -13,6 +13,7 @@ use crate::parser::token_list_ext::TokenListExt;
 use crate::parser::type_::type_;
 use crate::parser::variable::var_initializer;
 use crate::token::TerminalToken;
+use crate::{ContextType, Flavor};
 
 pub fn function_definition(tokens: TokenList) -> ParseResult<FunctionDefinition> {
     let (tokens, environment) = function_environment(tokens).maybe(tokens)?;
@@ -174,7 +175,30 @@ pub fn function_ref_param(tokens: TokenList) -> ParseResult<FunctionRefParam> {
 }
 
 pub fn call_argument(tokens: TokenList) -> ParseResult<CallArgument> {
-    let (tokens, value) = expression(tokens, Precedence::Comma)?;
-    let (tokens, comma) = tokens.terminal(TerminalToken::Comma).maybe(tokens)?;
+    let (after_value, value) = expression(tokens, Precedence::Comma)?;
+
+    if tokens.flavor() == Flavor::SquirrelRespawn
+        && after_value.terminal(TerminalToken::Comma).is_err()
+    {
+        if let Expression::Var(var_expr) = value.as_ref() {
+            if let Ok((after_fn, function)) = after_value.terminal(TerminalToken::Function) {
+                let return_type = Type::Plain(PlainType {
+                    name: var_expr.name.clone(),
+                });
+                let (after_def, definition) = function_definition(after_fn).definite()?;
+                let (after_comma, comma) = after_def
+                    .terminal(TerminalToken::Comma)
+                    .maybe(after_def)?;
+                let value = Box::new(Expression::Function(FunctionExpression {
+                    return_type: Some(return_type),
+                    function,
+                    definition,
+                }));
+                return Ok((after_comma, CallArgument { value, comma }));
+            }
+        }
+    }
+
+    let (tokens, comma) = after_value.terminal(TerminalToken::Comma).maybe(after_value)?;
     Ok((tokens, CallArgument { value, comma }))
 }
