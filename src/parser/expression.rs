@@ -57,19 +57,14 @@ fn value(tokens: TokenList) -> ParseResult<Box<Expression>> {
 }
 
 pub fn function(tokens: TokenList) -> ParseResult<FunctionExpression> {
-    // Parse an optional return type, prefer a same-line type
-    let (tokens, return_type) = match type_(tokens).not_line_ending().maybe(tokens) {
-        Ok((t, Some(ty))) => (t, Some(ty)),
-        _ => match type_(tokens) {
-            Ok((after_type, ty)) if after_type.terminal(TerminalToken::Function).is_ok() => {
-                (after_type, Some(ty))
-            }
-            _ => (tokens, None),
-        },
-    };
-    tokens
-        .terminal(TerminalToken::Function)
-        .map_val(|function| (return_type, function))
+    type_(tokens)
+        .not_line_ending()
+        .maybe(tokens)
+        .and_then(|(tokens, return_type)| {
+            tokens
+                .terminal(TerminalToken::Function)
+                .map_val(|function| (return_type, function))
+        })
         .determines(|tokens, (return_type, function)| {
             function_definition(tokens).map_val(|definition| FunctionExpression {
                 return_type,
