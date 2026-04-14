@@ -1,4 +1,6 @@
+use crate::ParseErrorType;
 use crate::ast::GlobalDefinition;
+use crate::parser::ParseResult;
 use crate::parser::identifier::identifier;
 use crate::parser::parse_result_ext::ParseResultExt;
 use crate::parser::statement::{
@@ -9,9 +11,7 @@ use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
 use crate::parser::type_::type_;
 use crate::parser::variable::var_initializer;
-use crate::parser::ParseResult;
 use crate::token::TerminalToken;
-use crate::ParseErrorType;
 
 pub fn global_definition(tokens: TokenList) -> ParseResult<GlobalDefinition> {
     function_global(tokens)

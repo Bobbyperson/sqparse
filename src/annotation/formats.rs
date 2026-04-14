@@ -1,6 +1,6 @@
+use crate::annotation::Mode;
 use crate::annotation::gutter::Gutter;
 use crate::annotation::line_printer::LinePrinter;
-use crate::annotation::Mode;
 use std::fmt::{Display, Formatter};
 use std::ops::{Range, RangeInclusive};
 
@@ -27,16 +27,25 @@ impl Display for SingleLineFormatDisplay<'_> {
             let is_start_elided = display_start > 4;
             let is_end_elided = display_end < self.line.len() - 4;
 
-            let elided_start = if is_start_elided {
+            let mut elided_start = if is_start_elided {
                 display_start + 4
             } else {
                 display_start
             };
-            let elided_end = if is_end_elided {
+            let mut elided_end = if is_end_elided {
                 display_end - 4
             } else {
                 display_end
             };
+
+            // Snap to UTF-8 character boundaries so we never slice in the middle of a
+            // multi-byte character.
+            while elided_start > 0 && !self.line.is_char_boundary(elided_start) {
+                elided_start -= 1;
+            }
+            while elided_end < self.line.len() && !self.line.is_char_boundary(elided_end) {
+                elided_end += 1;
+            }
 
             write!(f, "{}", printer.line(""))?;
 

@@ -8,6 +8,7 @@ use crate::ast::{
     Type, TypeDefinitionStatement, UntypedStatement, VarDefinition, VarDefinitionStatement,
     WaitStatement, WaitThreadSoloStatement, WaitThreadStatement, WhileStatement, YieldStatement,
 };
+use crate::parser::ParseResult;
 use crate::parser::class::class_definition;
 use crate::parser::control::{
     for_definition, foreach_index, foreach_value, if_statement_type, switch_case,
@@ -23,7 +24,6 @@ use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
 use crate::parser::type_::type_;
 use crate::parser::variable::{var_definition, var_initializer};
-use crate::parser::ParseResult;
 use crate::token::{TerminalToken, Token, TokenType};
 use crate::{ContextType, ParseErrorType};
 

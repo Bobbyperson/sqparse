@@ -1,4 +1,4 @@
-use sqparse::{parse, tokenize, Flavor};
+use sqparse::{Flavor, parse, tokenize};
 
 fn main() {
     let source = include_str!("print_ast_script.nut");

@@ -1,8 +1,8 @@
 use crate::ast::{SeparatedList1, SeparatedListTrailing0, SeparatedListTrailing1};
+use crate::parser::ParseResult;
 use crate::parser::error::TokenAffinity;
 use crate::parser::parse_result_ext::ParseResultExt;
 use crate::parser::token_list::TokenList;
-use crate::parser::ParseResult;
 use crate::token::{TerminalToken, Token, TokenType};
 use crate::{ParseError, ParseErrorType, TokenItem};
 
@@ -27,13 +27,13 @@ pub trait TokenListExt<'s>: Sized {
         )
     }
 
-    fn ended_or<T>(self, res: ParseResult<'s, T>) -> ParseResult<'s, T> {
-        if self.into_token_list().is_ended() {
-            res
-        } else {
-            res.definite()
-        }
-    }
+    // fn ended_or<T>(self, res: ParseResult<'s, T>) -> ParseResult<'s, T> {
+    //     if self.into_token_list().is_ended() {
+    //         res
+    //     } else {
+    //         res.definite()
+    //     }
+    // }
 
     fn empty(self) -> Option<(TokenList<'s>, &'s Token<'s>)> {
         let tokens = self.into_token_list();

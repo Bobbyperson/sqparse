@@ -1,6 +1,6 @@
+use crate::Flavor;
 use crate::lexer::parse_str::ParseStr;
 use crate::token::{TerminalToken, TokenType};
-use crate::Flavor;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
@@ -17,7 +17,7 @@ fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphanumeric()
 }
 
-fn try_identifier_str(val: ParseStr) -> Option<(&str, ParseStr)> {
+fn try_identifier_str(val: ParseStr<'_>) -> Option<(&str, ParseStr<'_>)> {
     let first_char = val.as_str().chars().next()?;
     if first_char != '_' && !first_char.is_ascii_alphabetic() {
         return None;

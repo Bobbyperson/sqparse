@@ -1,7 +1,7 @@
+use crate::parser::ParseResult;
 use crate::parser::error::TokenAffinity;
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
-use crate::parser::ParseResult;
 use crate::{ContextType, ParseError, ParseErrorType};
 use std::ops::Range;
 
@@ -120,7 +120,7 @@ pub trait ParseResultExt<'s, T>: Sized {
 
                 // If parsing succeeded with no input tokens, something has gone wrong and we don't
                 // want to loop forever.
-                assert!(!remaining_tokens.is_ended());
+                assert!(!new_tokens.is_ended());
 
                 remaining_tokens = new_tokens;
             }

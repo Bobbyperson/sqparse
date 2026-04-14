@@ -1,10 +1,10 @@
 use crate::ast::{Precedence, TableSlot, TableSlotType};
+use crate::parser::ParseResult;
 use crate::parser::expression::expression;
 use crate::parser::parse_result_ext::ParseResultExt;
 use crate::parser::slot::slot;
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
-use crate::parser::ParseResult;
 use crate::token::{LiteralToken, StringToken, TerminalToken, Token, TokenType};
 use crate::{ContextType, ParseErrorType};
 
@@ -38,7 +38,7 @@ fn json_property_slot(tokens: TokenList) -> ParseResult<TableSlotType> {
         .with_context_from(ContextType::Property, tokens)
 }
 
-fn string_literal(tokens: TokenList) -> ParseResult<(&str, &Token)> {
+fn string_literal(tokens: TokenList<'_>) -> ParseResult<'_, (&str, &Token<'_>)> {
     if let Some((tokens, item)) = tokens.split_first() {
         if let TokenType::Literal(LiteralToken::String(StringToken::Literal(name))) = item.token.ty
         {

@@ -1,5 +1,5 @@
-use crate::lexer::TokenItem;
 use crate::Flavor;
+use crate::lexer::TokenItem;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TokenList<'s> {

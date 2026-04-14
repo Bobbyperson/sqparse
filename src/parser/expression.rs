@@ -5,6 +5,7 @@ use crate::ast::{
     PrefixExpression, PropertyExpression, RootVarExpression, TableExpression, TernaryExpression,
     VarExpression, VectorExpression,
 };
+use crate::parser::ParseResult;
 use crate::parser::array::array_value;
 use crate::parser::class::class_definition;
 use crate::parser::function::{call_argument, function_definition, function_params};
@@ -15,7 +16,6 @@ use crate::parser::table::table_slot;
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
 use crate::parser::type_::type_;
-use crate::parser::ParseResult;
 use crate::token::{TerminalToken, TokenType};
 use crate::{ContextType, ParseErrorType};
 
@@ -57,14 +57,19 @@ fn value(tokens: TokenList) -> ParseResult<Box<Expression>> {
 }
 
 pub fn function(tokens: TokenList) -> ParseResult<FunctionExpression> {
-    type_(tokens)
-        .not_line_ending()
-        .maybe(tokens)
-        .and_then(|(tokens, return_type)| {
-            tokens
-                .terminal(TerminalToken::Function)
-                .map_val(|function| (return_type, function))
-        })
+    // Parse an optional return type, prefer a same-line type
+    let (tokens, return_type) = match type_(tokens).not_line_ending().maybe(tokens) {
+        Ok((t, Some(ty))) => (t, Some(ty)),
+        _ => match type_(tokens) {
+            Ok((after_type, ty)) if after_type.terminal(TerminalToken::Function).is_ok() => {
+                (after_type, Some(ty))
+            }
+            _ => (tokens, None),
+        },
+    };
+    tokens
+        .terminal(TerminalToken::Function)
+        .map_val(|function| (return_type, function))
         .determines(|tokens, (return_type, function)| {
             function_definition(tokens).map_val(|definition| FunctionExpression {
                 return_type,

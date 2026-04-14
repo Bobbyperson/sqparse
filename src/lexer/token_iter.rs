@@ -1,3 +1,4 @@
+use crate::Flavor;
 use crate::lexer::comment::try_comment;
 use crate::lexer::error::{LexerError, LexerErrorType};
 use crate::lexer::identifier::try_identifier;
@@ -5,7 +6,6 @@ use crate::lexer::literal::try_literal;
 use crate::lexer::parse_str::ParseStr;
 use crate::lexer::symbol::try_symbol;
 use crate::token::{Comment, Token, TokenLine, TokenType};
-use crate::Flavor;
 
 macro_rules! try_some {
     ($val:expr) => {

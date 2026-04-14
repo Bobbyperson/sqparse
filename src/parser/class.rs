@@ -1,10 +1,10 @@
 use crate::ast::{ClassDefinition, ClassExtends, ClassMember, Precedence};
+use crate::parser::ParseResult;
 use crate::parser::expression::{expression, table_delimited};
 use crate::parser::parse_result_ext::ParseResultExt;
 use crate::parser::slot::slot;
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
-use crate::parser::ParseResult;
 use crate::token::TerminalToken;
 use crate::{ContextType, ParseErrorType};
 

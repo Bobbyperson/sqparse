@@ -7,7 +7,7 @@
 //! ```
 //! use sqparse::annotation::{Annotation, display_annotations, Mode};
 //!
-//! yansi::Paint::disable();
+//! yansi::disable();
 //!
 //! let source = "highlight me!";
 //! let annotations = [
@@ -124,7 +124,7 @@ pub struct Annotation {
 /// ```
 /// use sqparse::annotation::{Annotation, display_annotations, Mode};
 ///
-/// yansi::Paint::disable();
+/// yansi::disable();
 ///
 /// let source = "highlight me!";
 /// let annotations = [
@@ -142,7 +142,6 @@ pub struct Annotation {
 /// 1 | highlight me!
 ///   |           -- this is me!");
 /// ```
-
 pub fn display_annotations<'s>(
     file_name: Option<&'s str>,
     source: &'s str,
@@ -280,6 +279,12 @@ enum FormatData<'s> {
 
 impl<'s> FormatData<'s> {
     pub fn new(text: &'s str, highlight: Range<usize>, visible: Range<usize>) -> Self {
+        // Clamp both ranges to the length of the source text so an out-of-bounds
+        // highlight never causes a panic.
+        let text_len = text.len();
+        let highlight = highlight.start.min(text_len)..highlight.end.min(text_len);
+        let visible = visible.start.min(text_len)..visible.end.min(text_len);
+
         let has_newline = text[highlight.clone()].contains('\n');
 
         if has_newline {

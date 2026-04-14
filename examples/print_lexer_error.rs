@@ -1,4 +1,4 @@
-use sqparse::{tokenize, Flavor};
+use sqparse::{Flavor, tokenize};
 
 fn main() {
     let source = include_str!("print_lexer_error_script.nut");

@@ -26,6 +26,6 @@ pub fn try_comment(val: ParseStr) -> Result<Option<(Comment, ParseStr)>, LexerEr
     Ok(None)
 }
 
-fn get_rest_of_line(val: ParseStr) -> (&str, ParseStr) {
+fn get_rest_of_line(val: ParseStr<'_>) -> (&str, ParseStr<'_>) {
     val.split_at(val.as_str().find('\n'))
 }

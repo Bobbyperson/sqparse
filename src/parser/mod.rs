@@ -21,8 +21,8 @@ mod variable;
 
 pub use self::context::ContextType;
 pub use self::error::{ParseError, ParseErrorContext, ParseErrorType};
-use crate::ast::Program;
 use crate::Flavor;
+use crate::ast::Program;
 
 use crate::lexer::TokenItem;
 use crate::parser::statement::statement;

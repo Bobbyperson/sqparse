@@ -1,6 +1,6 @@
+use crate::Flavor;
 use crate::lexer::parse_str::ParseStr;
 use crate::token::TerminalToken;
-use crate::Flavor;
 
 pub fn try_symbol(val: ParseStr, flavor: Flavor) -> Option<(TerminalToken, ParseStr)> {
     TerminalToken::SYMBOLS

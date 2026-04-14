@@ -93,10 +93,10 @@ fn try_number(val: ParseStr) -> Option<(LiteralToken, ParseStr)> {
 }
 
 fn try_string_val(
-    val: ParseStr,
+    val: ParseStr<'_>,
     delimiter: char,
     is_verbatim: bool,
-) -> Result<Option<(&str, ParseStr)>, LexerError> {
+) -> Result<Option<(&str, ParseStr<'_>)>, LexerError<'_>> {
     if !val.as_str().starts_with(delimiter) {
         return Ok(None);
     }

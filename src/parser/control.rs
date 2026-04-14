@@ -1,7 +1,9 @@
+use crate::ContextType;
 use crate::ast::{
     ForDefinition, ForeachIndex, Identifier, IfStatementType, Precedence, Statement, SwitchCase,
     SwitchCaseCondition, Type,
 };
+use crate::parser::ParseResult;
 use crate::parser::expression::expression;
 use crate::parser::identifier::identifier;
 use crate::parser::parse_result_ext::ParseResultExt;
@@ -9,9 +11,7 @@ use crate::parser::statement::{statement, statement_type, typed_var_definition_s
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
 use crate::parser::type_::type_;
-use crate::parser::ParseResult;
 use crate::token::{TerminalToken, Token};
-use crate::ContextType;
 
 pub fn if_statement_type(tokens: TokenList) -> ParseResult<IfStatementType> {
     let (tokens, body) = statement_type(tokens)?;
@@ -21,7 +21,12 @@ pub fn if_statement_type(tokens: TokenList) -> ParseResult<IfStatementType> {
 
     let Ok((tokens, else_)) = next_tokens.terminal(TerminalToken::Else) else {
         // Return the body WITHOUT consuming the `;`.
-        return Ok((tokens, IfStatementType::NoElse { body: Box::new(body) }))
+        return Ok((
+            tokens,
+            IfStatementType::NoElse {
+                body: Box::new(body),
+            },
+        ));
     };
 
     let (tokens, else_body) = statement_type(tokens).definite()?;
@@ -121,11 +126,15 @@ fn typed_foreach_index(tokens: TokenList) -> ParseResult<ForeachIndex> {
     ))
 }
 
-pub fn foreach_value(tokens: TokenList) -> ParseResult<(Option<Type>, Identifier, &Token)> {
+pub fn foreach_value(
+    tokens: TokenList<'_>,
+) -> ParseResult<'_, (Option<Type<'_>>, Identifier<'_>, &Token<'_>)> {
     untyped_foreach_value(tokens).or_try(|| typed_foreach_value(tokens))
 }
 
-fn typed_foreach_value(tokens: TokenList) -> ParseResult<(Option<Type>, Identifier, &Token)> {
+fn typed_foreach_value(
+    tokens: TokenList<'_>,
+) -> ParseResult<'_, (Option<Type<'_>>, Identifier<'_>, &Token<'_>)> {
     type_(tokens)
         .and_then(|(tokens, type_)| identifier(tokens).map_val(|name| (type_, name)))
         .determines(|tokens, (type_, name)| {
@@ -134,7 +143,9 @@ fn typed_foreach_value(tokens: TokenList) -> ParseResult<(Option<Type>, Identifi
         })
 }
 
-fn untyped_foreach_value(tokens: TokenList) -> ParseResult<(Option<Type>, Identifier, &Token)> {
+fn untyped_foreach_value(
+    tokens: TokenList<'_>,
+) -> ParseResult<'_, (Option<Type<'_>>, Identifier<'_>, &Token<'_>)> {
     let (tokens, name) = identifier(tokens)?;
     let (tokens, in_) = tokens.terminal(TerminalToken::In)?;
     Ok((tokens, (None, name, in_)))

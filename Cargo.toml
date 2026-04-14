@@ -1,7 +1,7 @@
 [package]
 name = "sqparse"
-version = "0.3.0"
-edition = "2021"
+version = "0.4.0"
+edition = "2024"
 description = "Squirrel3 and Squirrel_re parser."
 keywords = ["squirrel", "parser"]
 homepage = "https://github.com/cpdt/sqparse"
@@ -9,6 +9,6 @@ repository = "https://github.com/cpdt/sqparse"
 license = "MIT"
 
 [dependencies]
-lexical = { version = "6.1", features = ["power-of-two"] }
-lazy_static = "1.4"
-yansi = "0.5"
+lexical = { version = "7.0", features = ["power-of-two"] }
+lazy_static = "1.5"
+yansi = "1.0"

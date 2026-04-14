@@ -1,5 +1,5 @@
-use crate::ast::slot::Slot;
 use crate::ast::Expression;
+use crate::ast::slot::Slot;
 use crate::token::Token;
 
 /// Slot in a [`TableExpression`] with an optional separator.

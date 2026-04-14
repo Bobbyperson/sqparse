@@ -1,4 +1,4 @@
-use crate::annotation::{display_annotations, Annotation, Mode};
+use crate::annotation::{Annotation, Mode, display_annotations};
 use crate::token::TokenType;
 use std::ops::Range;
 use yansi::Paint;
@@ -45,6 +45,28 @@ pub enum LexerErrorType<'s> {
     UnmatchedOpener {
         open: TokenType<'s>,
         close: TokenType<'s>,
+    },
+
+    /// A close delimiter was found but there is no open delimiter to match it.
+    ///
+    /// # Example
+    /// ```text
+    /// myfunc 1, 2)
+    ///            ^ error
+    /// ```
+    UnmatchedClose { close: TokenType<'s> },
+
+    /// A close delimiter was found that doesn't match the innermost open delimiter.
+    ///
+    /// # Example
+    /// ```text
+    /// myfunc(1, 2]
+    ///            ^ error
+    /// ```
+    MismatchedClose {
+        open: TokenType<'s>,
+        expected_close: TokenType<'s>,
+        actual_close: TokenType<'s>,
     },
 }
 
@@ -101,6 +123,19 @@ impl std::fmt::Display for LexerErrorType<'_> {
             LexerErrorType::UnmatchedOpener { open, .. } => {
                 write!(f, "unclosed delimiter {open}")
             }
+            LexerErrorType::UnmatchedClose { close } => {
+                write!(f, "unexpected closing delimiter {close}")
+            }
+            LexerErrorType::MismatchedClose {
+                open,
+                expected_close,
+                actual_close,
+            } => {
+                write!(
+                    f,
+                    "mismatched delimiter: {open} cannot be closed with {actual_close}, expected {expected_close}"
+                )
+            }
         }
     }
 }
@@ -115,6 +150,12 @@ impl std::fmt::Display for LexerErrorInlineDisplay<'_> {
             }
             LexerErrorType::UnmatchedOpener { close, .. } => {
                 write!(f, "does not have a matching {close}")
+            }
+            LexerErrorType::UnmatchedClose { close } => {
+                write!(f, "{close} has no matching opener")
+            }
+            LexerErrorType::MismatchedClose { expected_close, .. } => {
+                write!(f, "expected {expected_close}")
             }
             LexerErrorType::InvalidInput => write!(f, "not sure what this is"),
         }
@@ -134,7 +175,7 @@ impl std::fmt::Display for Display<'_> {
             "{}{}{}",
             Paint::red("error").bold(),
             Paint::white(": ").bold(),
-            Paint::white(self.error.ty).bold(),
+            Paint::white(&self.error.ty).bold(),
         )?;
 
         let annotations = [Annotation {

@@ -1,4 +1,4 @@
-use sqparse::{parse, tokenize, Flavor};
+use sqparse::{Flavor, parse, tokenize};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -56,7 +56,7 @@ fn main() {
         let parse_secs = parse_start.elapsed().as_secs_f64();
         println!("  parse: {parse_secs}s");
 
-        total_size_bytes += file_text.bytes().len();
+        total_size_bytes += file_text.len();
         total_lex_secs += lex_secs;
         total_parse_secs += parse_secs;
     });

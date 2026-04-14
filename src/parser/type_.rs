@@ -2,6 +2,7 @@ use crate::ast::{
     ArrayType, FunctionRefType, GenericType, LocalType, NullableType, PlainType, Precedence,
     ReferenceType, StructType, Type,
 };
+use crate::parser::ParseResult;
 use crate::parser::expression::expression;
 use crate::parser::function::function_ref_param;
 use crate::parser::identifier::identifier;
@@ -9,7 +10,6 @@ use crate::parser::parse_result_ext::ParseResultExt;
 use crate::parser::struct_::struct_definition;
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
-use crate::parser::ParseResult;
 use crate::token::TerminalToken;
 use crate::{ContextType, Flavor, ParseErrorType};
 

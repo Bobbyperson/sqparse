@@ -1,7 +1,9 @@
+use crate::ContextType;
 use crate::ast::{
     CallArgument, FunctionCaptures, FunctionDefinition, FunctionEnvironment, FunctionParam,
     FunctionParams, FunctionRefParam, Precedence, SeparatedList1,
 };
+use crate::parser::ParseResult;
 use crate::parser::expression::expression;
 use crate::parser::identifier::identifier;
 use crate::parser::parse_result_ext::ParseResultExt;
@@ -10,9 +12,7 @@ use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
 use crate::parser::type_::type_;
 use crate::parser::variable::var_initializer;
-use crate::parser::ParseResult;
 use crate::token::TerminalToken;
-use crate::ContextType;
 
 pub fn function_definition(tokens: TokenList) -> ParseResult<FunctionDefinition> {
     let (tokens, environment) = function_environment(tokens).maybe(tokens)?;
@@ -72,7 +72,7 @@ pub fn function_params(tokens: TokenList) -> ParseResult<FunctionParams> {
         // There are no arguments. The function can still be variable.
         return match tokens.terminal(TerminalToken::Ellipsis) {
             Ok((tokens, vararg)) => Ok((tokens, FunctionParams::EmptyVariable { vararg })),
-            Err(_) => Ok((tokens, FunctionParams::NonVariable { params: None }))
+            Err(_) => Ok((tokens, FunctionParams::NonVariable { params: None })),
         };
     };
 

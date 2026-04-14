@@ -1,7 +1,7 @@
-use crate::annotation::{display_annotations, Annotation, Mode};
+use crate::TokenItem;
+use crate::annotation::{Annotation, Mode, display_annotations};
 use crate::parser::context::ContextType;
 use crate::token::TerminalToken;
-use crate::TokenItem;
 use std::ops::Range;
 use yansi::Paint;
 
@@ -389,14 +389,14 @@ impl std::fmt::Display for Display<'_> {
             "{}{}{}",
             Paint::red("error").bold(),
             Paint::white(": ").bold(),
-            Paint::white(self.error.ty).bold()
+            Paint::white(&self.error.ty).bold()
         )?;
         match self.tokens.get(self.error.token_index) {
             Some(item) => writeln!(
                 f,
                 "{}{}",
                 Paint::white(", found a ").bold(),
-                Paint::white(item.token.ty).bold()
+                Paint::white(&item.token.ty).bold()
             )?,
             None => writeln!(f, "{}", Paint::white(", found the end of input").bold())?,
         }
@@ -458,7 +458,9 @@ fn token_src_range(
     affinity: TokenAffinity,
     tokens: &[TokenItem],
 ) -> Range<usize> {
-    let Some(last_item) = tokens.last() else { return 0..0; };
+    let Some(last_item) = tokens.last() else {
+        return 0..0;
+    };
 
     if affinity == TokenAffinity::Before {
         if token_index > 0 {

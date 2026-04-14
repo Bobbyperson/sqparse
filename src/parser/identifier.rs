@@ -1,10 +1,10 @@
+use crate::ParseErrorType;
 use crate::ast::{Identifier, MethodIdentifier};
+use crate::parser::ParseResult;
 use crate::parser::parse_result_ext::ParseResultExt;
 use crate::parser::token_list::TokenList;
 use crate::parser::token_list_ext::TokenListExt;
-use crate::parser::ParseResult;
 use crate::token::{TerminalToken, TokenType};
-use crate::ParseErrorType;
 
 pub fn identifier(tokens: TokenList) -> ParseResult<Identifier> {
     if let Some((tokens, item)) = tokens.split_first() {

@@ -1,6 +1,6 @@
+use crate::Flavor;
 use crate::lexer::token_iter::TokenIter;
 use crate::token::{TerminalToken, Token, TokenType};
-use crate::Flavor;
 use std::collections::VecDeque;
 
 mod comment;
@@ -51,6 +51,17 @@ fn closing_token(opening: TokenType) -> Option<TokenType> {
     }
 }
 
+// Returns true if the token is a close delimiter.
+fn is_close_token(ty: TokenType) -> bool {
+    matches!(
+        ty,
+        TokenType::Terminal(TerminalToken::CloseBrace)
+            | TokenType::Terminal(TerminalToken::CloseSquare)
+            | TokenType::Terminal(TerminalToken::CloseBracket)
+            | TokenType::Terminal(TerminalToken::CloseAttributes)
+    )
+}
+
 struct Layer<'s> {
     open_index: usize,
     close_ty: TokenType<'s>,
@@ -77,7 +88,7 @@ struct Layer<'s> {
 /// let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
 /// assert_eq!(tokens.len(), 29);
 /// ```
-pub fn tokenize(val: &str, flavor: Flavor) -> Result<Vec<TokenItem>, LexerError> {
+pub fn tokenize(val: &str, flavor: Flavor) -> Result<Vec<TokenItem<'_>>, LexerError<'_>> {
     let mut items = Vec::<TokenItem>::new();
     let mut layers = VecDeque::<Layer>::new();
 
@@ -85,11 +96,29 @@ pub fn tokenize(val: &str, flavor: Flavor) -> Result<Vec<TokenItem>, LexerError>
         let token = maybe_token?;
         let token_index = items.len();
 
-        // If this token matches the top layer's close token, pop the layer.
-        if let Some(top_layer) = layers.back() {
-            if top_layer.close_ty == token.ty {
-                items[top_layer.open_index].close_index = Some(token_index);
-                layers.pop_back();
+        // If this token is a close delimiter, it must match the innermost open delimiter.
+        if is_close_token(token.ty) {
+            match layers.back() {
+                Some(top_layer) if top_layer.close_ty == token.ty => {
+                    items[top_layer.open_index].close_index = Some(token_index);
+                    layers.pop_back();
+                }
+                Some(top_layer) => {
+                    return Err(LexerError::new(
+                        LexerErrorType::MismatchedClose {
+                            open: items[top_layer.open_index].token.ty,
+                            expected_close: top_layer.close_ty,
+                            actual_close: token.ty,
+                        },
+                        token.range.clone(),
+                    ));
+                }
+                None => {
+                    return Err(LexerError::new(
+                        LexerErrorType::UnmatchedClose { close: token.ty },
+                        token.range.clone(),
+                    ));
+                }
             }
         }
 

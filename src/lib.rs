@@ -45,5 +45,5 @@ mod parser;
 pub mod token;
 
 pub use self::flavor::Flavor;
-pub use self::lexer::{tokenize, LexerError, LexerErrorType, TokenItem};
-pub use self::parser::{parse, ContextType, ParseError, ParseErrorContext, ParseErrorType};
+pub use self::lexer::{LexerError, LexerErrorType, TokenItem, tokenize};
+pub use self::parser::{ContextType, ParseError, ParseErrorContext, ParseErrorType, parse};
