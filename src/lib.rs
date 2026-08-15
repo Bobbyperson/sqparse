@@ -8,6 +8,8 @@
 //!  - Friendly error messages: in general, the parser aims to show nice syntax error messages with
 //!    useful contextual information. Unfortunately this isn't always possible due to syntax
 //!    ambiguities, especially where Respawn's type system is involved.
+//!  - Partial tokenization and parsing APIs for analysis tools that need valid regions from
+//!    malformed source without synthetic AST nodes.
 //!  - Parses all [Northstar scripts](https://github.com/R2Northstar/NorthstarMods) and
 //!    [R5Reloaded scripts](https://github.com/Mauler125/scripts_r5) successfully. The resulting
 //!    ASTs have not been verified.
@@ -45,5 +47,11 @@ mod parser;
 pub mod token;
 
 pub use self::flavor::Flavor;
-pub use self::lexer::{LexerError, LexerErrorType, TokenItem, tokenize};
-pub use self::parser::{ContextType, ParseError, ParseErrorContext, ParseErrorType, parse};
+pub use self::lexer::{
+    LexerError, LexerErrorType, PartialTokenization, TokenItem, TokenRegion, tokenize,
+    tokenize_partial, tokenize_partial_with_error_limit,
+};
+pub use self::parser::{
+    ContextType, ParseError, ParseErrorContext, ParseErrorType, ParseRecovery, ParsedStatement,
+    PartialParse, TokenAffinity, parse, parse_partial,
+};

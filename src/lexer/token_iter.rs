@@ -20,6 +20,7 @@ pub struct TokenIter<'s> {
     val: ParseStr<'s>,
     flavor: Flavor,
     current_token: Option<Token<'s>>,
+    pending_error: Option<LexerError<'s>>,
     before_lines: Vec<TokenLine<'s>>,
     current_line_comments: Vec<Comment<'s>>,
 }
@@ -30,8 +31,45 @@ impl<'s> TokenIter<'s> {
             val: ParseStr::new(val),
             flavor,
             current_token: None,
+            pending_error: None,
             before_lines: Vec::new(),
             current_line_comments: Vec::new(),
+        }
+    }
+
+    fn recover_error(
+        &mut self,
+        mut error: LexerError<'s>,
+    ) -> Option<Result<Token<'s>, LexerError<'s>>> {
+        let start = self.val.start_offset();
+        let end = match error.ty {
+            LexerErrorType::InvalidInput => self
+                .val
+                .as_str()
+                .chars()
+                .next()
+                .map_or(start, |character| start + character.len_utf8()),
+            LexerErrorType::EndOfLineInsideString => error.range.start,
+            LexerErrorType::EndOfInputInsideString => self.val.end_offset(),
+            LexerErrorType::UnmatchedOpener { .. }
+            | LexerErrorType::UnmatchedClose { .. }
+            | LexerErrorType::MismatchedClose { .. } => {
+                unreachable!("delimiter errors are indexed after tokenization")
+            }
+        };
+
+        if matches!(error.ty, LexerErrorType::InvalidInput) {
+            error.range = start..end;
+        }
+        self.val = self.val.from(end - start);
+        self.before_lines.clear();
+        self.current_line_comments.clear();
+
+        if let Some(token) = self.current_token.take() {
+            self.pending_error = Some(error);
+            Some(Ok(token))
+        } else {
+            Some(Err(error))
         }
     }
 }
@@ -40,6 +78,10 @@ impl<'s> Iterator for TokenIter<'s> {
     type Item = Result<Token<'s>, LexerError<'s>>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if let Some(error) = self.pending_error.take() {
+            return Some(Err(error));
+        }
+
         // Scan through any newlines and comments.
         while !self.val.is_ended() {
             // Note that trim_start does not trim newlines.
@@ -70,9 +112,10 @@ impl<'s> Iterator for TokenIter<'s> {
             } else if let Some((comment, remaining)) = try_some!(try_comment(self.val)) {
                 self.val = remaining;
                 self.current_line_comments.push(comment);
-            } else if let Some((token_ty, remaining)) =
-                try_some!(try_token_ty(self.val, self.flavor))
-            {
+            } else if let Some((token_ty, remaining)) = match try_token_ty(self.val, self.flavor) {
+                Ok(result) => result,
+                Err(error) => return self.recover_error(error),
+            } {
                 let token = Token {
                     ty: token_ty,
                     range: self.val.start_offset()..remaining.start_offset(),
@@ -95,10 +138,10 @@ impl<'s> Iterator for TokenIter<'s> {
                 }
             } else {
                 // Not a newline, not a comment, not a token.
-                return Some(Err(LexerError::new(
+                return self.recover_error(LexerError::new(
                     LexerErrorType::InvalidInput,
                     self.val.start_offset()..self.val.start_offset(),
-                )));
+                ));
             }
         }
 

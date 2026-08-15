@@ -92,16 +92,16 @@ pub fn parens(tokens: TokenList) -> ParseResult<ParensExpression> {
 }
 
 pub fn literal(tokens: TokenList) -> ParseResult<LiteralExpression> {
-    if let Some((tokens, item)) = tokens.split_first() {
-        if let TokenType::Literal(literal) = item.token.ty {
-            return Ok((
-                tokens,
-                LiteralExpression {
-                    literal,
-                    token: &item.token,
-                },
-            ));
-        }
+    if let Some((tokens, item)) = tokens.split_first()
+        && let TokenType::Literal(literal) = item.token.ty
+    {
+        return Ok((
+            tokens,
+            LiteralExpression {
+                literal,
+                token: &item.token,
+            },
+        ));
     }
 
     Err(tokens.error(ParseErrorType::ExpectedLiteral))

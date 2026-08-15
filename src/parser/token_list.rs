@@ -10,10 +10,15 @@ pub struct TokenList<'s> {
 
 impl<'s> TokenList<'s> {
     pub fn new(flavor: Flavor, tokens: &'s [TokenItem<'s>]) -> Self {
+        Self::at(flavor, tokens, 0)
+    }
+
+    pub fn at(flavor: Flavor, tokens: &'s [TokenItem<'s>], index: usize) -> Self {
+        assert!(index <= tokens.len());
         TokenList {
             flavor,
             tokens,
-            index: 0,
+            index,
         }
     }
 

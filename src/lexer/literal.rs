@@ -132,13 +132,13 @@ fn try_string_val(
         }
 
         // Verbatim strings can include a double delimiter
-        if is_verbatim && next_char == delimiter {
-            if let Some((_, skip_char)) = char_indices.peek() {
-                if *skip_char == delimiter {
-                    char_indices.next();
-                    continue;
-                }
-            }
+        if is_verbatim
+            && next_char == delimiter
+            && let Some((_, skip_char)) = char_indices.peek()
+            && *skip_char == delimiter
+        {
+            char_indices.next();
+            continue;
         }
 
         if next_char == delimiter {
