@@ -78,20 +78,20 @@ pub fn function_params(tokens: TokenList) -> ParseResult<FunctionParams> {
     };
 
     // If the list has a trailing comma, it can also be variable.
-    if let Some(comma) = list.trailing {
-        if let Ok((tokens, vararg)) = tokens.terminal(TerminalToken::Ellipsis) {
-            return Ok((
-                tokens,
-                FunctionParams::NonEmptyVariable {
-                    params: SeparatedList1 {
-                        items: list.items,
-                        last_item: list.last_item,
-                    },
-                    comma,
-                    vararg,
+    if let Some(comma) = list.trailing
+        && let Ok((tokens, vararg)) = tokens.terminal(TerminalToken::Ellipsis)
+    {
+        return Ok((
+            tokens,
+            FunctionParams::NonEmptyVariable {
+                params: SeparatedList1 {
+                    items: list.items,
+                    last_item: list.last_item,
                 },
-            ));
-        }
+                comma,
+                vararg,
+            },
+        ));
     }
 
     Ok((tokens, FunctionParams::NonVariable { params: Some(list) }))
@@ -179,26 +179,24 @@ pub fn call_argument(tokens: TokenList) -> ParseResult<CallArgument> {
 
     if tokens.flavor() == Flavor::SquirrelRespawn
         && after_value.terminal(TerminalToken::Comma).is_err()
+        && let Expression::Var(var_expr) = value.as_ref()
+        && let Ok((after_fn, function)) = after_value.terminal(TerminalToken::Function)
     {
-        if let Expression::Var(var_expr) = value.as_ref() {
-            if let Ok((after_fn, function)) = after_value.terminal(TerminalToken::Function) {
-                let return_type = Type::Plain(PlainType {
-                    name: var_expr.name.clone(),
-                });
-                let (after_def, definition) = function_definition(after_fn).definite()?;
-                let (after_comma, comma) = after_def
-                    .terminal(TerminalToken::Comma)
-                    .maybe(after_def)?;
-                let value = Box::new(Expression::Function(FunctionExpression {
-                    return_type: Some(return_type),
-                    function,
-                    definition,
-                }));
-                return Ok((after_comma, CallArgument { value, comma }));
-            }
-        }
+        let return_type = Type::Plain(PlainType {
+            name: var_expr.name.clone(),
+        });
+        let (after_def, definition) = function_definition(after_fn).definite()?;
+        let (after_comma, comma) = after_def.terminal(TerminalToken::Comma).maybe(after_def)?;
+        let value = Box::new(Expression::Function(FunctionExpression {
+            return_type: Some(return_type),
+            function,
+            definition,
+        }));
+        return Ok((after_comma, CallArgument { value, comma }));
     }
 
-    let (tokens, comma) = after_value.terminal(TerminalToken::Comma).maybe(after_value)?;
+    let (tokens, comma) = after_value
+        .terminal(TerminalToken::Comma)
+        .maybe(after_value)?;
     Ok((tokens, CallArgument { value, comma }))
 }

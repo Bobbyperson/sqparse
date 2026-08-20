@@ -37,10 +37,10 @@ pub trait TokenListExt<'s>: Sized {
 
     fn empty(self) -> Option<(TokenList<'s>, &'s Token<'s>)> {
         let tokens = self.into_token_list();
-        if let Some((tokens, item)) = tokens.split_first() {
-            if let TokenType::Empty = item.token.ty {
-                return Some((tokens, &item.token));
-            }
+        if let Some((tokens, item)) = tokens.split_first()
+            && let TokenType::Empty = item.token.ty
+        {
+            return Some((tokens, &item.token));
         }
 
         None
@@ -48,12 +48,11 @@ pub trait TokenListExt<'s>: Sized {
 
     fn terminal_item(self, terminal: TerminalToken) -> ParseResult<'s, &'s TokenItem<'s>> {
         let tokens = self.into_token_list();
-        if let Some((tokens, item)) = tokens.split_first() {
-            if let TokenType::Terminal(received) = item.token.ty {
-                if received == terminal {
-                    return Ok((tokens, item));
-                }
-            }
+        if let Some((tokens, item)) = tokens.split_first()
+            && let TokenType::Terminal(received) = item.token.ty
+            && received == terminal
+        {
+            return Ok((tokens, item));
         }
 
         Err(tokens.error(ParseErrorType::ExpectedTerminal(terminal)))

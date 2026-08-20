@@ -36,17 +36,17 @@ pub fn statement(tokens: TokenList) -> ParseResult<Statement> {
     }
 
     // Statement can end if the last token was a `}`.
-    if let Some(last_item) = next_tokens.previous() {
-        if let TokenType::Terminal(TerminalToken::CloseBrace) = last_item.token.ty {
-            return Ok((next_tokens, statement));
-        }
+    if let Some(last_item) = next_tokens.previous()
+        && let TokenType::Terminal(TerminalToken::CloseBrace) = last_item.token.ty
+    {
+        return Ok((next_tokens, statement));
     }
 
     // Statement can end if the next token is an empty statement.
-    if let Some(last_item) = next_tokens.next() {
-        if let TokenType::Empty = last_item.token.ty {
-            return Ok((next_tokens, statement));
-        }
+    if let Some(last_item) = next_tokens.next()
+        && let TokenType::Empty = last_item.token.ty
+    {
+        return Ok((next_tokens, statement));
     }
 
     Err(next_tokens.error_before(ParseErrorType::ExpectedEndOfStatement))

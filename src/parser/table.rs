@@ -39,11 +39,10 @@ fn json_property_slot(tokens: TokenList) -> ParseResult<TableSlotType> {
 }
 
 fn string_literal(tokens: TokenList<'_>) -> ParseResult<'_, (&str, &Token<'_>)> {
-    if let Some((tokens, item)) = tokens.split_first() {
-        if let TokenType::Literal(LiteralToken::String(StringToken::Literal(name))) = item.token.ty
-        {
-            return Ok((tokens, (name, &item.token)));
-        }
+    if let Some((tokens, item)) = tokens.split_first()
+        && let TokenType::Literal(LiteralToken::String(StringToken::Literal(name))) = item.token.ty
+    {
+        return Ok((tokens, (name, &item.token)));
     }
 
     Err(tokens.error(ParseErrorType::ExpectedStringLiteral))
