@@ -67,7 +67,10 @@ pub struct Annotation {
     /// ```
     pub note: String,
 
-    /// Character range of the source text to highlight.
+    /// Byte range of the source text to highlight.
+    ///
+    /// Offsets are clamped to the source. If an offset falls inside a UTF-8 code point, the start
+    /// is rounded down and the end is rounded up to the nearest character boundary.
     ///
     /// If all characters on this range are on the same line, a single line will be printed like
     /// this:
@@ -88,10 +91,11 @@ pub struct Annotation {
     /// ```
     pub highlight: Range<usize>,
 
-    /// Character range that must be visible in a multi-line output.
+    /// Byte range that must be visible in a multi-line output.
     ///
     /// When `highlight` spans multiple lines, lines between the first and last two may be folded.
-    /// However any lines covered by the `visible` range will be included.
+    /// However any lines covered by the `visible` range will be included. Portions outside
+    /// `highlight` are clamped to the highlighted lines.
     ///
     /// For example, this can cause one or more lines to be unfolded:
     /// ```text
@@ -111,7 +115,7 @@ pub struct Annotation {
 /// Displays a list of annotations from a source string.
 ///
 /// The annotations will be prepended with the file name, if one is provided, and the start line
-/// and character offset of the first annotation. For example:
+/// and one-based byte offset of the first annotation. For example:
 /// ```text
 ///   --> my_file.txt:5:1
 ///  5 | error
@@ -279,11 +283,8 @@ enum FormatData<'s> {
 
 impl<'s> FormatData<'s> {
     pub fn new(text: &'s str, highlight: Range<usize>, visible: Range<usize>) -> Self {
-        // Clamp both ranges to the length of the source text so an out-of-bounds
-        // highlight never causes a panic.
-        let text_len = text.len();
-        let highlight = highlight.start.min(text_len)..highlight.end.min(text_len);
-        let visible = visible.start.min(text_len)..visible.end.min(text_len);
+        let highlight = normalize_byte_range(text, highlight);
+        let visible = normalize_byte_range(text, visible);
 
         let has_newline = text[highlight.clone()].contains('\n');
 
@@ -330,12 +331,18 @@ impl<'s> FormatData<'s> {
 
     fn new_multi_line(text: &'s str, highlight: Range<usize>, visible: Range<usize>) -> Self {
         let (first_line_number, first_start_index) = get_line_containing(highlight.start, text);
-        let (last_line_number, last_start_index) =
-            get_line_containing(highlight.end.saturating_sub(1), text);
+        let highlight_last_char = last_char_start(text, highlight.end);
+        let (last_line_number, last_start_index) = get_line_containing(highlight_last_char, text);
 
-        let (first_must_be_visible_line_number, _) = get_line_containing(visible.start, text);
-        let (last_must_be_visible_line_number, _) =
-            get_line_containing(visible.end.saturating_sub(1), text);
+        // `visible` is only meaningful inside the highlighted region. Clamp its line numbers so
+        // ranges entirely before or after the highlight cannot make the formatter underflow.
+        let first_must_be_visible_line_number = get_line_containing(visible.start, text)
+            .0
+            .clamp(first_line_number, last_line_number);
+        let last_must_be_visible_line_number =
+            get_line_containing(last_char_start(text, visible.end), text)
+                .0
+                .clamp(first_must_be_visible_line_number, last_line_number);
 
         let last_end_index = text[last_start_index..]
             .find('\n')
@@ -344,7 +351,7 @@ impl<'s> FormatData<'s> {
 
         let lines = &text[first_start_index..last_end_index];
         let first_line_highlight = highlight.start - first_start_index;
-        let last_line_highlight = highlight.end.saturating_sub(1) - last_start_index;
+        let last_line_highlight = highlight_last_char - last_start_index;
 
         FormatData::MultiLine {
             line_numbers: first_line_number..=last_line_number,
@@ -357,8 +364,123 @@ impl<'s> FormatData<'s> {
     }
 }
 
+fn normalize_byte_range(text: &str, range: Range<usize>) -> Range<usize> {
+    let start = range.start.min(text.len());
+    let end = range.end.min(text.len()).max(start);
+
+    let normalized_start = char_boundary_at_or_before(text, start);
+
+    let mut normalized_end = end;
+    while !text.is_char_boundary(normalized_end) {
+        normalized_end += 1;
+    }
+
+    normalized_start..normalized_end
+}
+
+fn last_char_start(text: &str, exclusive_end: usize) -> usize {
+    let exclusive_end = char_boundary_at_or_before(text, exclusive_end.min(text.len()));
+    text[..exclusive_end]
+        .char_indices()
+        .next_back()
+        .map_or(0, |(index, _)| index)
+}
+
+fn char_boundary_at_or_before(text: &str, index: usize) -> usize {
+    let mut index = index.min(text.len());
+    while !text.is_char_boundary(index) {
+        index -= 1;
+    }
+    index
+}
+
 fn get_line_containing(index: usize, val: &str) -> (usize, usize) {
+    let index = char_boundary_at_or_before(val, index);
     let line = val[..index].chars().filter(|ch| *ch == '\n').count() + 1;
     let line_start_index = val[..index].rfind('\n').map(|idx| idx + 1).unwrap_or(0);
     (line, line_start_index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Annotation, Mode, display_annotations};
+
+    fn annotation(
+        highlight: std::ops::Range<usize>,
+        visible: std::ops::Range<usize>,
+    ) -> Annotation {
+        Annotation {
+            mode: Mode::Info,
+            text: "note".to_string(),
+            note: String::new(),
+            highlight,
+            visible,
+        }
+    }
+
+    #[test]
+    fn annotations_use_byte_offsets_for_non_ascii_source() {
+        yansi::disable();
+        let output = format!(
+            "{}",
+            display_annotations(Some("test.nut"), "éx", &[annotation(2..3, 2..3)])
+        );
+
+        assert!(output.starts_with(" --> test.nut:1:3"));
+        assert!(output.contains("1 | éx"));
+    }
+
+    #[test]
+    fn annotation_offsets_inside_utf8_code_points_are_normalized() {
+        yansi::disable();
+        let output = format!(
+            "{}",
+            display_annotations(None, "éx", &[annotation(1..2, 1..2)])
+        );
+
+        assert!(output.contains("1 | éx"));
+        assert!(output.contains("| -- note"));
+    }
+
+    #[test]
+    fn multiline_visible_range_before_highlight_is_clamped() {
+        yansi::disable();
+        let source = "outside\noutside\noutside\nfirst\nsecond\nthird\nfourth\noutside\n";
+        let highlight_start = source.find("first").unwrap();
+        let highlight_end = source.rfind("\noutside\n").unwrap();
+        let output = format!(
+            "{}",
+            display_annotations(
+                None,
+                source,
+                &[annotation(highlight_start..highlight_end, 0..7)]
+            )
+        );
+
+        assert!(output.contains("first"));
+        assert!(output.contains("fourth"));
+    }
+
+    #[test]
+    fn multiline_visible_range_after_highlight_is_clamped() {
+        yansi::disable();
+        let output = format!(
+            "{}",
+            display_annotations(None, "a\nb\nc\nd\ne", &[annotation(0..3, 8..9)])
+        );
+
+        assert!(output.contains("note"));
+    }
+
+    #[test]
+    fn multiline_highlight_can_end_with_a_multibyte_character() {
+        yansi::disable();
+        let output = format!(
+            "{}",
+            display_annotations(None, "a\né", &[annotation(0..4, 0..4)])
+        );
+
+        assert!(output.contains("é"));
+        assert!(output.contains("note"));
+    }
 }

@@ -127,7 +127,14 @@ fn try_string_val(
 
         // Non-verbatim strings can use escape sequences to include newlines or delimiter chars.
         if !is_verbatim && next_char == '\\' {
-            char_indices.next();
+            if let Some((_, escaped_char)) = char_indices.next()
+                && escaped_char == '\r'
+                && char_indices
+                    .peek()
+                    .is_some_and(|(_, next_char)| *next_char == '\n')
+            {
+                char_indices.next();
+            }
             continue;
         }
 
@@ -209,6 +216,19 @@ or two""#,
 a newline \
 or two"#
             )
+        );
+    }
+
+    #[test]
+    fn escaped_crlf_linebreak_literal_string() {
+        let (token, _) = super::try_string(crate::lexer::parse_str::ParseStr::new(
+            "\"this literal string includes \\\r\na newline\"",
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            token,
+            StringToken::Literal("this literal string includes \\\r\na newline")
         );
     }
 

@@ -79,7 +79,7 @@ pub struct LexerError<'s> {
     /// The type of error.
     pub ty: LexerErrorType<'s>,
 
-    /// The character range of where the error occurred.
+    /// The byte range of where the error occurred.
     pub range: Range<usize>,
 }
 

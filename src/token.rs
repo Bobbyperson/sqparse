@@ -388,7 +388,7 @@ pub struct Token<'s> {
     /// The type of token.
     pub ty: TokenType<'s>,
 
-    /// The character range of the token in the source string.
+    /// The byte range of the token in the source string.
     pub range: Range<usize>,
 
     /// Empty lines that appear before the token. The lines may contain comments.
