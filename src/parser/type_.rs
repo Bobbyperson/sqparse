@@ -90,18 +90,24 @@ fn modifier<'s>(tokens: TokenList<'s>, left: TypeRef<'_, 's>) -> ParseResult<'s,
 }
 
 fn array<'s>(tokens: TokenList<'s>, left: TypeRef<'_, 's>) -> ParseResult<'s, ArrayType<'s>> {
-    tokens.terminal(TerminalToken::OpenSquare).opens(
-        ContextType::Expression,
-        |tokens| tokens.terminal(TerminalToken::CloseSquare),
-        |tokens, open, close| {
-            expression(tokens, Precedence::None).map_val(|len| ArrayType {
-                base: Box::new(left.take()),
-                open,
-                len,
-                close,
-            })
-        },
-    )
+    // Only take `left` once the whole array suffix has parsed. `opens` can still fail after the
+    // inner parser succeeds (e.g. `a[1 2]`), and that failure is non-fatal, so the caller needs
+    // `left` to still be there.
+    tokens
+        .terminal(TerminalToken::OpenSquare)
+        .opens(
+            ContextType::Expression,
+            |tokens| tokens.terminal(TerminalToken::CloseSquare),
+            |tokens, open, close| {
+                expression(tokens, Precedence::None).map_val(|len| (open, len, close))
+            },
+        )
+        .map_val(|(open, len, close)| ArrayType {
+            base: Box::new(left.take()),
+            open,
+            len,
+            close,
+        })
 }
 
 fn generic<'s>(tokens: TokenList<'s>, left: TypeRef<'_, 's>) -> ParseResult<'s, GenericType<'s>> {
@@ -192,4 +198,25 @@ fn function_ref<'s>(
                 },
             ))
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Flavor, parse, tokenize};
+
+    #[test]
+    fn array_suffix_with_trailing_tokens_does_not_panic() {
+        for source in [
+            "a[1 2]",
+            "int[1 2] x",
+            "function f() { a[i j] }",
+            "array<int>[a b] x",
+        ] {
+            let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
+            assert!(
+                parse(&tokens, Flavor::SquirrelRespawn).is_err(),
+                "expected parse error for {source:?}"
+            );
+        }
+    }
 }

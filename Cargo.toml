@@ -1,6 +1,6 @@
 [package]
 name = "sqparse"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 description = "Squirrel3 and Squirrel_re parser."
 keywords = ["squirrel", "parser"]
@@ -10,5 +10,5 @@ license = "MIT"
 
 [dependencies]
 lexical = { version = "7.0", features = ["power-of-two"] }
-lazy_static = "1.5"
+lazy_static = "1.5.1"
 yansi = "1.0"

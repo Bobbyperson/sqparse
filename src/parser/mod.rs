@@ -187,6 +187,8 @@ fn is_recovery_boundary(item: &TokenItem<'_>) -> bool {
 mod tests {
     use super::{parse, parse_partial};
     use crate::ast::StatementType;
+    use crate::parser::ParseErrorType;
+    use crate::token::{TerminalToken, TokenType};
     use crate::{Flavor, tokenize};
 
     fn function_names(partial: &super::PartialParse<'_>) -> Vec<String> {
@@ -202,14 +204,27 @@ mod tests {
             .collect()
     }
 
+    fn variable_names(partial: &super::PartialParse<'_>) -> Vec<String> {
+        partial
+            .statements
+            .iter()
+            .filter_map(|statement| match &statement.statement.ty {
+                StatementType::VarDefinition(definition) => {
+                    Some(definition.definitions.last_item.name.value.to_string())
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     #[test]
-    fn partial_parse_matches_strict_parse_for_valid_source() {
+    fn partial_parse_retains_valid_functions() {
         let source = "void function First() {}\nvoid function Second() {}\n";
         let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
-        let strict = parse(&tokens, Flavor::SquirrelRespawn).unwrap();
         let partial = parse_partial(&tokens, Flavor::SquirrelRespawn);
 
-        assert_eq!(partial.statements.len(), strict.statements.len());
+        assert_eq!(partial.statements.len(), 2);
+        assert_eq!(function_names(&partial), ["First", "Second"]);
         assert!(partial.errors.is_empty());
     }
 
@@ -224,7 +239,8 @@ void function After() {}
 
         assert_eq!(function_names(&partial), ["Before", "After"]);
         assert_eq!(partial.errors.len(), 1);
-        assert!(partial.errors[0].token_range.start < partial.errors[0].token_range.end);
+        assert_eq!(partial.errors[0].error.ty, ParseErrorType::ExpectedValue);
+        assert!(!partial.errors[0].token_range.is_empty());
     }
 
     #[test]
@@ -233,8 +249,15 @@ void function After() {}
         let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
         let partial = parse_partial(&tokens, Flavor::SquirrelRespawn);
 
-        assert_eq!(partial.statements.len(), 1);
-        assert_eq!(partial.errors.len(), 2);
+        assert_eq!(variable_names(&partial), ["valid"]);
+        assert_eq!(
+            partial
+                .errors
+                .iter()
+                .map(|recovery| recovery.error.ty)
+                .collect::<Vec<_>>(),
+            [ParseErrorType::ExpectedValue, ParseErrorType::ExpectedValue]
+        );
     }
 
     #[test]
@@ -248,12 +271,10 @@ local topLevel = 2
         let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
         let partial = parse_partial(&tokens, Flavor::SquirrelRespawn);
 
-        assert_eq!(partial.statements.len(), 1);
+        assert_eq!(variable_names(&partial), ["topLevel"]);
         assert_eq!(partial.errors.len(), 1);
-        assert!(matches!(
-            partial.statements[0].statement.ty,
-            StatementType::VarDefinition(_)
-        ));
+        assert_eq!(partial.errors[0].error.ty, ParseErrorType::ExpectedValue);
+        assert!(!partial.errors[0].token_range.is_empty());
     }
 
     #[test]
@@ -262,9 +283,14 @@ local topLevel = 2
         let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
         let partial = parse_partial(&tokens, Flavor::SquirrelRespawn);
 
-        assert_eq!(partial.statements.len(), 1);
+        assert_eq!(variable_names(&partial), ["valid"]);
         assert_eq!(partial.errors.len(), 1);
-        assert_eq!(partial.errors[0].token_range.end, 4);
+        assert_eq!(partial.errors[0].error.ty, ParseErrorType::ExpectedValue);
+        let discarded = &partial.errors[0].token_range;
+        assert_eq!(
+            tokens[discarded.end - 1].token.ty,
+            TokenType::Terminal(TerminalToken::Semicolon)
+        );
     }
 
     #[test]
@@ -274,10 +300,11 @@ local topLevel = 2
         let strict_error = parse(&tokens, Flavor::SquirrelRespawn).unwrap_err();
         let partial = parse_partial(&tokens, Flavor::SquirrelRespawn);
 
+        assert_eq!(strict_error.ty, ParseErrorType::ExpectedValue);
+        assert_eq!(partial.errors[0].error.ty, strict_error.ty);
         assert_eq!(
             partial.errors[0].error.token_index,
             strict_error.token_index
         );
-        assert_eq!(partial.errors[0].error.ty, strict_error.ty);
     }
 }

@@ -172,45 +172,43 @@ fn try_string(val: ParseStr) -> Result<Option<(StringToken, ParseStr)>, LexerErr
 
 #[cfg(test)]
 mod test {
-    use crate::lexer::literal::try_string;
-    use crate::lexer::parse_str::ParseStr;
-    use crate::token::StringToken;
+    use crate::token::{LiteralToken, StringToken, TokenType};
+    use crate::{Flavor, LexerErrorType, tokenize};
+
+    fn string_token(source: &str) -> StringToken<'_> {
+        let tokens = tokenize(source, Flavor::SquirrelRespawn).unwrap();
+        assert_eq!(tokens.len(), 1);
+
+        match tokens[0].token.ty {
+            TokenType::Literal(LiteralToken::String(string)) => string,
+            token => panic!("expected a string literal, got {token}"),
+        }
+    }
 
     #[test]
     fn single_line_literal_string() {
-        let (val, _) = try_string(ParseStr::new(r#""this is a literal string""#))
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(val, StringToken::Literal("this is a literal string"));
+        assert_eq!(
+            string_token(r#""this is a literal string""#),
+            StringToken::Literal("this is a literal string")
+        );
     }
 
     #[test]
     fn single_line_escaped_literal_string() {
-        let (val, _) = try_string(ParseStr::new(
-            r#""this literal string includes \" a delimiter""#,
-        ))
-        .unwrap()
-        .unwrap();
-
         assert_eq!(
-            val,
+            string_token(r#""this literal string includes \" a delimiter""#),
             StringToken::Literal(r#"this literal string includes \" a delimiter"#)
         );
     }
 
     #[test]
     fn escaped_linebreak_literal_string() {
-        let (val, _) = try_string(ParseStr::new(
-            r#""this literal string includes \
+        assert_eq!(
+            string_token(
+                r#""this literal string includes \
 a newline \
 or two""#,
-        ))
-        .unwrap()
-        .unwrap();
-
-        assert_eq!(
-            val,
+            ),
             StringToken::Literal(
                 r#"this literal string includes \
 a newline \
@@ -234,49 +232,40 @@ or two"#
 
     #[test]
     fn unescaped_linebreak_literal_string() {
-        let result = try_string(ParseStr::new(
+        let error = tokenize(
             r#""this literal string includes
 a newline""#,
-        ));
+            Flavor::SquirrelRespawn,
+        )
+        .unwrap_err();
 
-        assert!(result.is_err());
+        assert!(matches!(error.ty, LexerErrorType::EndOfLineInsideString));
     }
 
     #[test]
     fn single_line_verbatim_string() {
-        let (val, _) = try_string(ParseStr::new(r#"@"this is a verbatim string""#))
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(val, StringToken::Verbatim("this is a verbatim string"));
+        assert_eq!(
+            string_token(r#"@"this is a verbatim string""#),
+            StringToken::Verbatim("this is a verbatim string")
+        );
     }
 
     #[test]
     fn single_line_delimiter_verbatim_string() {
-        let (val, _) = try_string(ParseStr::new(
-            r#"@"this verbatim string includes a "" delimiter""#,
-        ))
-        .unwrap()
-        .unwrap();
-
         assert_eq!(
-            val,
+            string_token(r#"@"this verbatim string includes a "" delimiter""#),
             StringToken::Verbatim(r#"this verbatim string includes a "" delimiter"#)
         );
     }
 
     #[test]
     fn linebreak_verbatim_string() {
-        let (val, _) = try_string(ParseStr::new(
-            r#"@"this verbatim string includes
+        assert_eq!(
+            string_token(
+                r#"@"this verbatim string includes
 a newline
 or two""#,
-        ))
-        .unwrap()
-        .unwrap();
-
-        assert_eq!(
-            val,
+            ),
             StringToken::Verbatim(
                 r#"this verbatim string includes
 a newline
